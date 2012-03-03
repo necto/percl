@@ -2,7 +2,7 @@
 (defpackage percl (:use :cl :cl-user :iter)
    (:import-from #:mongo-cl-driver.son-sugar son)
    (:export :identifable :id
-			:database :db
+			:database-base :db
 			:generate-methods
 			  :load-inst
 			  :load-all-instances
@@ -14,14 +14,14 @@
 (defclass identifable () ((id :initform 0 :reader id))
   (:documentation "A basic class for all instances to be stored in database"))
 
-(defclass database ()
+(defclass database-base ()
   ((db :type mongo:database)
    (counters ))
   (:documentation "Basic class for data base, inheritors
 				  must initialize the db slot by opening
 				  a connection to a db server"))
 
-(defmethod initialize-instance :after ((db database) &key)
+(defmethod initialize-instance :after ((db database-base) &key)
   (setf (slot-value db 'counters) (mongo:collection (slot-value db 'db) "counters")))
 
 (defgeneric load-inst (class id storage)
