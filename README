@@ -1,0 +1,1 @@
+A simple persistence manager for common lisp. Currently supports only mongo.db via mongo-db-driver.
