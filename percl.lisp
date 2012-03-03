@@ -11,7 +11,7 @@
 
 (in-package percl)
 
-(defclass identifable () ((id :initform 0 :reader id))
+(defclass identifable () ((id :initform 0 :reader id :initarg :id))
   (:documentation "A basic class for all instances to be stored in database"))
 
 (defclass database-base ()
@@ -43,23 +43,35 @@
 	  (mongo:update-op (slot-value storage 'counters) (son "name" "uniq") counter)
 	  (floor val))))
 
+(defun ensure-type (val type)
+  (if type
+	(let ((val-name (gensym)))
+	  `(let ((,val-name ,val))
+		 ,(ccase type
+				 (integer
+				   `(if (and (stringp ,val-name)
+							 (string= "" ,val-name))
+					  nil ,val-name)))))
+	val))
+
 (defun doc-2-inst (doc class specs)
-  (flet ((expand (slot name &key set)
-		  `(setf (slot-value inst ,slot)
-				 ,(if set
-					`(cond ,@(mapcar #'(lambda (sub)
-										`((equal ,(second sub)
-												 (gethash ,name ,doc))
-										  ,(first sub)))
-									set)
-						   (t (gethash ,name ,doc)))
-					`(gethash ,name ,doc)))))
+  (flet ((expand (slot name &key set type &allow-other-keys)
+			(let ((val (ensure-type `(gethash ,name ,doc) type)))
+			  `(setf (slot-value inst ,slot)
+					 ,(if set
+						`(cond ,@(mapcar #'(lambda (sub)
+											`((equal ,(second sub)
+													 ,val)
+											  ,(first sub)))
+										set)
+							   (t ,val))
+						val)))))
 	`(let ((inst (make-instance ',class)))
 	   ,@(mapcar #'(lambda (spec) (apply #'expand spec)) (cons '('id "id") specs))
 	   inst)))
 
 (defun inst-2-doc (inst specs)
-  (flet ((expand (slot name &key set)
+  (flet ((expand (slot name &key set &allow-other-keys)
 		  `(setf (gethash ,name doc)
 				 ,(if set
 					`(cond ,@(mapcar #'(lambda (sub)
@@ -77,7 +89,8 @@
   `(progn
 	 (defmethod load-inst ((class (eql ',class)) id (db ,db))
 	   (let ((doc (mongo:find-one (slot-value db ,coll) (son "id" id))))
-		 ,(doc-2-inst 'doc class specs)))
+		 (when doc
+		   ,(doc-2-inst 'doc class specs))))
 	 (defmethod load-all-instances ((class (eql ',class)) (db ,db))
 	   (iter (for doc in (mongo:find-list (slot-value db ,coll) :query (son)))
 			 (collect ,(doc-2-inst 'doc class specs))))
