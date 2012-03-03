@@ -12,7 +12,7 @@
 (in-package percl)
 
 (defclass identifable () ((id :initform 0 :reader id))
-  (:documentation "A basic class for all instances to be stored in database")
+  (:documentation "A basic class for all instances to be stored in database"))
 
 (defclass database ()
   (:documentation "Basic class for data base, inheritors
