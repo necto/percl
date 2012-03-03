@@ -15,11 +15,11 @@
   (:documentation "A basic class for all instances to be stored in database"))
 
 (defclass database ()
+  ((db :type mongo:database)
+   (counters ))
   (:documentation "Basic class for data base, inheritors
 				  must initialize the db slot by opening
-				  a connection to a db server")
-  ((db :type mongo:database)
-   (counters )))
+				  a connection to a db server"))
 
 (defmethod initialize-instance :after ((db database) &key)
   (setf (slot-value db 'counters) (mongo:collection (slot-value db 'db) "counters")))
