@@ -11,19 +11,30 @@
 
 (in-package percl)
 
-(defclass identifable () ((id :initform 0 :reader id)))
+(defclass identifable () ((id :initform 0 :reader id))
+  (:documentation "A basic class for all instances to be stored in database")
 
 (defclass database ()
+  (:documentation "Basic class for data base, inheritors
+				  must initialize the db slot by opening
+				  a connection to a db server")
   ((db :type mongo:database)
    (counters )))
 
 (defmethod initialize-instance :after ((db database) &key)
   (setf (slot-value db 'counters) (mongo:collection (slot-value db 'db) "counters")))
 
-(defgeneric load-inst (class id storage))
-(defgeneric load-all-instances (class storage))
+(defgeneric load-inst (class id storage)
+  (:documentation "Pull an instance of class gy id from storage"))
+(defgeneric load-all-instances (class storage)
+  (:documentation "Load whole collection of given class instances from
+				  the storage")
 (defgeneric new-inst (class storage))
-(defgeneric store-inst (inst storage))
+  (:documentation "Create a new instance of the given class,
+				  having uniq (for given database) id, and insert it there")
+(defgeneric store-inst (inst storage)
+  (:documentation "Save all changes of the given instance to the database, 
+				  or insert it, if new ")
 
 (defun get-uniq-number (storage)
   (let ((counter (mongo:find-one (slot-value storage 'counters) (son "name" "uniq"))))
