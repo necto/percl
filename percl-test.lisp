@@ -29,7 +29,10 @@
 ;  (setf (slot-value aa 'sl2) 42)
 ;  (store-inst aa *db*)
 
-	(print (slot-value ii 'sl1)) )
+	(print (slot-value ii 'sl1)) 
+	
+	(print (get-fields 'test))
+	)
 ;	(print (load-all-instances 'test *db*))
 
 (sb-ext:quit)
