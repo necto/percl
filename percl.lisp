@@ -54,35 +54,39 @@
 					  nil ,val-name)))))
 	val))
 
-(defun doc-2-inst (doc class specs)
+
+(defun hash-getter (hash key) `(gethash ,key ,hash))
+(defun prop-getter (list key) `(getf ,list ,key))
+
+(defun mapargs (fun list)
+  (mapcar #'(lambda (unit) (apply fun unit)) list))
+
+(defun handle-set (getter set &key (bk nil))
+  (flet ((option (select subst) (if bk 
+								  `((equal ,subst ,getter) ,select)
+								  `((equal ,select ,getter) ,subst))))
+	(if set
+	  `(cond 
+		 ,@(mapargs #'option set)
+		 (t ,getter))
+	  getter)))
+
+(defun doc-2-inst (doc getter class specs)
   (flet ((expand (slot name &key set type &allow-other-keys)
-			(let ((val (ensure-type `(gethash ,name ,doc) type)))
+			(let ((val (ensure-type (funcall #'getter doc name) type)))
 			  `(setf (slot-value inst ,slot)
-					 ,(if set
-						`(cond ,@(mapcar #'(lambda (sub)
-											`((equal ,(second sub)
-													 ,val)
-											  ,(first sub)))
-										set)
-							   (t ,val))
-						val)))))
+					 ,(handle-set val set :bk t)))))
 	`(let ((inst (make-instance ',class)))
-	   ,@(mapcar #'(lambda (spec) (apply #'expand spec)) (cons '('id "id") specs))
+	   ,@(mapargs #'expand (cons '('id "id") specs))
 	   inst)))
 
-(defun inst-2-doc (inst specs)
+(defun inst-2-doc (inst getter specs)
   (flet ((expand (slot name &key set &allow-other-keys)
-		  `(setf (gethash ,name doc)
-				 ,(if set
-					`(cond ,@(mapcar #'(lambda (sub)
-										`((equal ,(first sub)
-												 (slot-value ,inst ,slot))
-										  ,(second sub)))
-									set)
-						   (t (slot-value ,inst ,slot)))
-					`(slot-value ,inst ,slot)))))
+		    (let ((val `(slot-value ,inst ,slot)))
+			  `(setf ,(funcall #'getter 'doc name) ;(gethash ,name doc)
+					 ,(handle-set val set)))))
 	`(let ((doc (make-hash-table :test 'equal)))
-	   ,@(mapcar #'(lambda (spec) (apply #'expand spec)) (cons '('id "id") specs))
+	   ,@(mapargs #'expand (cons '('id "id") specs))
 	   doc)))
 
 (defmacro generate-methods (class (coll db) specs)
@@ -90,10 +94,10 @@
 	 (defmethod load-inst ((class (eql ',class)) id (db ,db))
 	   (let ((doc (mongo:find-one (slot-value db ,coll) (son "id" id))))
 		 (when doc
-		   ,(doc-2-inst 'doc class specs))))
+		   ,(doc-2-inst 'doc #'hash-getter class specs))))
 	 (defmethod load-all-instances ((class (eql ',class)) (db ,db))
 	   (iter (for doc in (mongo:find-list (slot-value db ,coll) :query (son)))
-			 (collect ,(doc-2-inst 'doc class specs))))
+			 (collect ,(doc-2-inst 'doc #'hash-getter class specs))))
 
 	 (defmethod new-inst ((class (eql ',class)) (db ,db))
 	   (let ((id (get-uniq-number db)))
@@ -106,7 +110,8 @@
 	   (if (= 0 (id inst)) ;unaccounted instance
 		 (progn
 		   (setf (slot-value inst 'id) (get-uniq-number db))
-		   (mongo:insert-op (slot-value db ,coll) ,(inst-2-doc 'inst specs)))
+		   (mongo:insert-op (slot-value db ,coll)
+							,(inst-2-doc 'inst #'hash-getter specs)))
 		 (mongo:update-op (slot-value db ,coll) (son "id" (id inst)) 
-						  ,(inst-2-doc 'inst specs))))))
+						  ,(inst-2-doc 'inst #'hash-getter specs))))))
 
