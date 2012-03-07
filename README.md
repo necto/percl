@@ -28,7 +28,7 @@
 
 ; And then enjoy storing, and loading instances to/from database test:
 
-    (defvar id nil) :for not to lose an instance.
+    (defvar id nil) ;for not to lose an instance.
 
     (let ((i (make-instance 'Myth :name "Uranus"
                 :story
