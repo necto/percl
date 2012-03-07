@@ -20,7 +20,7 @@
       (setf (slot-value db 'myths) (mongo:collection (slot-value db 'db) "myths")))
     
     (defparameter *db* (make-instance 'DB))
-```
+
 ; And generate appropriate methods
 ; (see (documentation for generic functions in percl package)):
     
