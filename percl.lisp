@@ -137,19 +137,19 @@
 ;(defmacro generate-db-methods (class (coll db))
 ;  `(progn
 
-(defun sm-fn (cl)
-  (format t "~% ()()()()()(()())()())()()()()()()()()()()()()() == ~a~%" cl))
-
+(defun pump-fields (cl1 cl2)
+  (when (subtypep cl1 cl2)
+	(append-fields cl1 (direct-fields cl2)))
+  (when (subtypep cl2 cl1)
+	(append-fields cl2 (direct-fields cl1))))
 
 (defmacro generate-methods (class (coll db) specs)
   (pushnew class *got-classes*)
-  (print *got-classes*)
   `(progn
 	 (defmethod doc>inst progn ((inst ,class) (doc hash-table))
 	   ,@(pump-doc-to-inst 'doc #'hash-getter 'inst specs))
 
 	 (defmethod alist>inst progn ((inst ,class) (alist list))
-	   (format t "getted from alist ~a -> ~a ~%" alist ',class)
 	   ,@(pump-doc-to-inst 'alist #'alist-getter 'inst specs))
 
 	 (defmethod inst>doc progn ((inst ,class) (doc hash-table))
@@ -160,18 +160,11 @@
 	   (defmethod get-fields ((class (eql ',class)))  fields)
 	   (defmethod direct-fields ((class (eql ',class))) direct-fields)
 	   (defmethod append-fields ((class (eql ',class)) extra)
-		 (format t "called for ~a with ~a~%" class extra)
 		 (setf fields (append extra fields)))
 	   ,@(mapcar #'(lambda (succ)
 					 (when (not (eq succ class))    ;all this stuff needed just
-					   (when (subtypep succ class)  ;in order to replace MOP
-						 `(append-fields ',succ fields))
-					   (when (subtypep class succ)
-						 `(append-fields ',class (direct-fields ',succ)))))
-				 *got-classes*)
-	   (append-fields ',class (direct-fields ',class))
-	   (sm-fn ',class) ; Why isn't it called in server.lisp, but is called in percl-test.lisp ???
-	   )
+					   `(pump-fields ',succ ',class))) ;in order to replace MOP
+				 *got-classes*))
 	 
 	 (defmethod init-from-alist ((class (eql ',class)) alist)
 	   (let ((inst (make-instance class)))
