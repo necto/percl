@@ -13,9 +13,6 @@
 
 (in-package percl)
 
-(defclass identifable () ((id :initform 0 :reader id :type integer))
-  (:documentation "A basic class for all instances to be stored in database"))
-
 (defclass database-base ()
   ((db :type mongo:database)
    (counters ))
@@ -31,9 +28,6 @@
 (defgeneric load-all-instances (class storage)
   (:documentation "Load whole collection of given class instances from
 				  the storage"))
-(defgeneric new-inst (class storage)
-  (:documentation "Create a new instance of the given class,
-				  having uniq (for given database) id, and insert it there"))
 (defgeneric store-inst (inst storage)
   (:documentation "Save all changes of the given instance to the database, 
 				  or insert it, if new "))
@@ -42,6 +36,14 @@
 (defgeneric init-from-alist (class alist)
   (:documentation "Create instance according to given association list, such
 				  as the one, returned by hunchentoot:get-parameters*" ))
+
+(defgeneric doc>inst (inst doc) (:method-combination progn))
+(defgeneric inst>doc (inst doc) (:method-combination progn))
+(defgeneric append-fields (class extra))
+(defgeneric direct-fields (class))
+(defgeneric alist>inst (inst alist) (:method-combination progn))
+
+(defvar *got-classes* ())
 
 (defun get-uniq-number (storage)
   (let ((counter (mongo:find-one (slot-value storage 'counters) (son "name" "uniq"))))
@@ -96,23 +98,19 @@
 			  (t ,val-name)))
 		getter))))
 
-(defun doc-2-inst (doc getter class specs)
+(defun pump-doc-to-inst (doc getter inst specs)
   (flet ((expand (slot name &key set type &allow-other-keys)
 			(let ((val (ensure-type (funcall getter doc name) type)))
-			  `(setf (slot-value inst ,slot)
+			  `(setf (slot-value ,inst ,slot)
 					 ,(handle-set val set :bk t)))))
-	`(let ((inst (make-instance ',class)))
-	   ,@(mapargs #'expand (cons '('id "id" :type integer) specs))
-	   inst)))
+	(mapargs #'expand specs)))
 
-(defun inst-2-doc (inst getter specs)
+(defun pump-inst-to-doc (inst getter doc specs)
   (flet ((expand (slot name &key set &allow-other-keys)
 		    (let ((val `(slot-value ,inst ,slot)))
-			  `(setf ,(funcall getter 'doc name) ;(gethash ,name doc)
+			  `(setf ,(funcall getter doc name)
 					 ,(handle-set val set)))))
-	`(let ((doc (make-hash-table :test 'equal)))
-	   ,@(mapargs #'expand (cons '('id "id" :type integer) specs))
-	   doc)))
+	(mapargs #'expand specs)))
 
 (defun flatten (tree &optional tail)
   (if (atom tree) (cons tree tail)
@@ -120,38 +118,86 @@
 						  (flatten (cdr tree) tail)
 						  tail))))
 
+(defun make-inst-from-doc (doc class)
+  `(let ((inst (make-instance ',class)))
+	 (doc>inst inst ,doc)
+	 inst))
+
+(defun specs>prop-list (specs)
+  (flatten 
+	(mapargs 
+	  #'(lambda (slot name &key &allow-other-keys)
+		  `(,(intern (symbol-name (second slot)) "KEYWORD")
+			 ,name))
+	  specs)))
+
+;(defmacro generate-class-methods (class specs)
+;  `(progn
+
+;(defmacro generate-db-methods (class (coll db))
+;  `(progn
+
+(defun sm-fn (cl)
+  (format t "~% ()()()()()(()())()())()()()()()()()()()()()()() == ~a~%" cl))
+
+
 (defmacro generate-methods (class (coll db) specs)
+  (pushnew class *got-classes*)
+  (print *got-classes*)
   `(progn
+	 (defmethod doc>inst progn ((inst ,class) (doc hash-table))
+	   ,@(pump-doc-to-inst 'doc #'hash-getter 'inst specs))
+
+	 (defmethod alist>inst progn ((inst ,class) (alist list))
+	   (format t "getted from alist ~a -> ~a ~%" alist ',class)
+	   ,@(pump-doc-to-inst 'alist #'alist-getter 'inst specs))
+
+	 (defmethod inst>doc progn ((inst ,class) (doc hash-table))
+	   ,@(pump-inst-to-doc 'inst #'hash-getter 'doc specs))
+
+	 (let* ((direct-fields ',(specs>prop-list specs))
+			(fields direct-fields))
+	   (defmethod get-fields ((class (eql ',class)))  fields)
+	   (defmethod direct-fields ((class (eql ',class))) direct-fields)
+	   (defmethod append-fields ((class (eql ',class)) extra)
+		 (format t "called for ~a with ~a~%" class extra)
+		 (setf fields (append extra fields)))
+	   ,@(mapcar #'(lambda (succ)
+					 (when (not (eq succ class))    ;all this stuff needed just
+					   (when (subtypep succ class)  ;in order to replace MOP
+						 `(append-fields ',succ fields))
+					   (when (subtypep class succ)
+						 `(append-fields ',class (direct-fields ',succ)))))
+				 *got-classes*)
+	   (append-fields ',class (direct-fields ',class))
+	   (sm-fn ',class) ; Why isn't it called in server.lisp, but is called in percl-test.lisp ???
+	   )
+	 
+	 (defmethod init-from-alist ((class (eql ',class)) alist)
+	   (let ((inst (make-instance class)))
+		 (alist>inst inst alist)
+		 inst))
+
 	 (defmethod load-inst ((class (eql ',class)) id (db ,db))
 	   (let ((doc (mongo:find-one (slot-value db ,coll) (son "id" id))))
-		 (when doc
-		   ,(doc-2-inst 'doc #'hash-getter class specs))))
+		 (when doc ,(make-inst-from-doc 'doc class))))
+
 	 (defmethod load-all-instances ((class (eql ',class)) (db ,db))
 	   (iter (for doc in (mongo:find-list (slot-value db ,coll) :query (son)))
-			 (collect ,(doc-2-inst 'doc #'hash-getter class specs))))
-
-	 (defmethod new-inst ((class (eql ',class)) (db ,db))
-	   (let ((id (get-uniq-number db)))
-		 (let ((doc (make-hash-table :test 'equal)))
-		   (setf (gethash "id" doc) id)
-		   (mongo:insert-op (slot-value db ,coll) doc))
-		 (load-inst ',class id db)))
+			 (collect ,(make-inst-from-doc 'doc class))))
 
 	 (defmethod store-inst ((inst ,class) (db ,db))
 	   (if (= 0 (id inst)) ;unaccounted instance
 		 (progn
 		   (setf (slot-value inst 'id) (get-uniq-number db))
 		   (mongo:insert-op (slot-value db ,coll)
-							,(inst-2-doc 'inst #'hash-getter specs)))
+							(let ((doc (make-hash-table :test 'equal)))
+							  (inst>doc inst doc)
+							  doc)))
 		 (mongo:update-op (slot-value db ,coll) (son "id" (id inst)) 
-						  ,(inst-2-doc 'inst #'hash-getter specs))))
+						  (let ((doc (make-hash-table :test 'equal)))
+							(inst>doc inst doc)
+							doc))))))
 
-	 (defmethod get-fields ((class (eql ',class)))
-	   ',(flatten 
-		   (append (mapargs #'(lambda (slot name &key &allow-other-keys)
-								`(,(intern (symbol-name (second slot)) "KEYWORD") ,name))
-							specs)
-				   '(:id "id"))))
-	 (defmethod init-from-alist ((class (eql ',class)) alist)
-	   ,(doc-2-inst 'alist #'alist-getter class specs))))
+
 
