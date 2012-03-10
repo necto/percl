@@ -1,11 +1,17 @@
 
 (in-package :percl)
 
-(defgeneric doc>inst (inst doc) (:method-combination progn))
-(defgeneric inst>doc (inst doc) (:method-combination progn))
-(defgeneric append-fields (class extra))
-(defgeneric direct-fields (class))
-(defgeneric alist>inst (inst alist) (:method-combination progn))
+(defgeneric doc>inst (inst doc) (:method-combination progn)
+  (:documentation "Get data from hash-table doc to an instance inst"))
+(defgeneric inst>doc (inst doc) (:method-combination progn)
+  (:documentation "Put data from instance into hash-table doc"))
+(defgeneric append-fields (class extra)
+  (:documentation "Push a list of inherited fields extra, to the class list"))
+(defgeneric direct-fields (class)
+  (:documentation "Get the list of fields whicha are owned by this class,
+				   not predcessors"))
+(defgeneric alist>inst (inst alist) (:method-combination progn)
+  (:documentation "Initialize instance inst from associative list alist"))
 
 (defun parse-list (str)
   (when (and str (not (string= "" str)))
@@ -82,19 +88,25 @@
 	  specs)))
 
 (defun pump-fields (cl1 cl2)
+  "Look at these two classes, and add all fields of a predcessor
+   to a successor, by appending a list of them"
   (when (subtypep cl1 cl2)
 	(append-fields cl1 (direct-fields cl2)))
   (when (subtypep cl2 cl1)
 	(append-fields cl2 (direct-fields cl1))))
 
-(let (*got-classes*)
+(let (got-classes)
   (defun handle-fields (cl)
-    (unless (find cl *got-classes*)
-	  (iter (for other in *got-classes*) ;all this stuff needed just
-		    (pump-fields cl other))      ;in order to replace MOP
-	  (pushnew cl *got-classes*))))
+	"Implement inheritance in a humble form using subtypep predicate"
+    (unless (find cl got-classes)
+	  (iter (for other in got-classes) ;all this stuff needed just
+		    (pump-fields cl other))    ;in order to replace MOP
+	  (pushnew cl got-classes))))
 
 (defmacro generate-class-methods (class specs)
+  "Generate all neccessery methods to work with database
+   specs must be a list of the important fields of the class
+   which you want to be saved, and loaded in the certain format."
   `(progn
 	 (defmethod doc>inst progn ((inst ,class) (doc hash-table))
 	   ,@(pump-to-inst 'doc #'hash-getter 'inst specs))

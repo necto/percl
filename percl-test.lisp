@@ -7,7 +7,6 @@
 
 (in-package pkg)
 
-
 (use-package :percl)
 (use-package :lift)
 
@@ -71,8 +70,6 @@
   (setf (slot-value db 'db) (make-instance 'mongo:database :name "test"))
   (setf (slot-value db 'cont) (mongo:collection (slot-value db 'db) "tt")))
 
-;(defvar *db* (make-instance 'tst-db))
-
 (deftestsuite percl-db-test (percl-test)
   ((*db* (make-instance 'tst-db))
    (id)) )
@@ -101,5 +98,11 @@
   (let ((all (load-all-instances 'test-cl *db*)))
 	(ensure-same (type-of all) 'cons)))
 
-(print (run-tests :suite 'percl-test))
+(let* ((rez (run-tests :suite 'percl-test))
+	   (errs (lift:errors rez))
+	   (fails (lift:failures rez)))
+  (print rez)
+  (if (or errs fails)
+	(describe rez)
+	(sb-ext:quit)))
 

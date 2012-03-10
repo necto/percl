@@ -30,6 +30,8 @@
 	 doc))
 
 (defmacro generate-db-methods (class coll db)
+  "Generate methods, mentioned in :export section of the package.
+   They will persist every instance handled by the system."
   `(progn
 	 (defmethod load-inst ((class (eql ',class)) id (db ,db))
 	   (let ((doc (mongo:find-one (slot-value db ,coll) (son "id" id))))
