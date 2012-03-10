@@ -7,8 +7,6 @@
 (defgeneric direct-fields (class))
 (defgeneric alist>inst (inst alist) (:method-combination progn))
 
-(defvar *got-classes* ())
-
 (defun parse-list (str)
   (when (and str (not (string= "" str)))
 	(with-input-from-string (is str)
@@ -89,8 +87,14 @@
   (when (subtypep cl2 cl1)
 	(append-fields cl2 (direct-fields cl1))))
 
+(let (*got-classes*)
+  (defun handle-fields (cl)
+    (unless (find cl *got-classes*)
+	  (iter (for other in *got-classes*) ;all this stuff needed just
+		    (pump-fields cl other))      ;in order to replace MOP
+	  (pushnew cl *got-classes*))))
+
 (defmacro generate-class-methods (class specs)
-  (pushnew class *got-classes*)
   `(progn
 	 (defmethod doc>inst progn ((inst ,class) (doc hash-table))
 	   ,@(pump-to-inst 'doc #'hash-getter 'inst specs))
@@ -107,7 +111,5 @@
 	   (defmethod direct-fields ((class (eql ',class))) direct-fields)
 	   (defmethod append-fields ((class (eql ',class)) extra)
 		 (setf fields (append extra fields)))
-	   ,@(mapcar #'(lambda (succ)
-					 (when (not (eq succ class))    ;all this stuff needed just
-					   `(pump-fields ',succ ',class))) ;in order to replace MOP
-				 *got-classes*))))
+	   (handle-fields ',class))))
+
