@@ -1,14 +1,14 @@
 
 (in-package :percl)
 
-(defclass database-base ()
+(defclass db-base ()
   ((db :type mongo:database)
    (counters ))
   (:documentation "Basic class for data base, inheritors
 				  must initialize the db slot by opening
 				  a connection to a db server"))
 
-(defmethod initialize-instance :after ((db database-base) &key)
+(defmethod initialize-instance :after ((db db-base) &key)
   (setf (slot-value db 'counters) (mongo:collection (slot-value db 'db) "counters")))
 
 (defun get-uniq-number (storage)
@@ -31,11 +31,6 @@
 
 (defmacro generate-db-methods (class coll db)
   `(progn
-	 (defmethod init-from-alist ((class (eql ',class)) alist)
-	   (let ((inst (make-instance class)))
-		 (alist>inst inst alist)
-		 inst))
-
 	 (defmethod load-inst ((class (eql ',class)) id (db ,db))
 	   (let ((doc (mongo:find-one (slot-value db ,coll) (son "id" id))))
 		 (when doc ,(make-inst-from-doc 'doc class))))

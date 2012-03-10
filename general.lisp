@@ -111,5 +111,10 @@
 	   (defmethod direct-fields ((class (eql ',class))) direct-fields)
 	   (defmethod append-fields ((class (eql ',class)) extra)
 		 (setf fields (append extra fields)))
-	   (handle-fields ',class))))
+	   (handle-fields ',class))
+
+	 (defmethod init-from-alist ((class (eql ',class)) alist)
+	   (let ((inst (make-instance class)))
+		 (alist>inst inst alist)
+		 inst))))
 
