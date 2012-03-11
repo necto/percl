@@ -21,7 +21,7 @@
 (defclass test-cl-der (test-cl)
   ((sl3 :initarg :sl3)))
 
-(defclass tst-db (db-base)
+(defclass tst-db (mongo-db)
   (cont))
 
 (generate-methods test-cl ('cont tst-db)

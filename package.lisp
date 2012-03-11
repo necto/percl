@@ -3,7 +3,7 @@
 (defpackage percl (:use :cl :cl-user :iter)
    (:import-from #:mongo-cl-driver.son-sugar son)
    (:export :identifable :id
-			:db-base :db
+			:mongo-db :mem-db :db
 			:generate-methods
 			  :generate-class-methods
 			    :init-from-alist
