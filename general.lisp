@@ -7,6 +7,8 @@
   (:documentation "Put data from instance into hash-table doc"))
 (defgeneric append-fields (class extra)
   (:documentation "Push a list of inherited fields extra, to the class list"))
+(defgeneric reset-fields (class)
+  (:documentation "Leave only class's own fields in the list."))
 (defgeneric direct-fields (class)
   (:documentation "Get the list of fields whicha are owned by this class,
 				   not predcessors"))
@@ -95,13 +97,28 @@
   (when (subtypep cl2 cl1)
 	(append-fields cl2 (direct-fields cl1))))
 
+(defun reset-inheritance (got-classes)
+  (iter (for cl in got-classes)
+		(reset-fields cl)))
+
+(defun establish-inheritance (got-classes)
+  (iter (for subset on got-classes)
+		(iter (for cl in (cdr subset))
+			  (pump-fields cl (car subset)))))
+
+(defun reestablish-inheritance (got-classes)
+  (reset-inheritance got-classes)
+  (establish-inheritance got-classes))
+
 (let (got-classes)
   (defun handle-fields (cl)
 	"Implement inheritance in a humble form using subtypep predicate"
-    (unless (find cl got-classes)
-	  (iter (for other in got-classes) ;all this stuff needed just
-		    (pump-fields cl other))    ;in order to replace MOP
-	  (pushnew cl got-classes))))
+	(if (find cl got-classes)
+	  (reestablish-inheritance got-classes) ;redefenition, reload.
+	  (progn
+		(iter (for other in got-classes) ;all this stuff needed just
+			  (pump-fields cl other))    ;in order to replace MOP
+		(pushnew cl got-classes)))))
 
 (defmacro generate-class-methods (class specs)
   "Generate all neccessery methods to work with database
@@ -125,6 +142,8 @@
 	   (defmethod direct-fields ((class (eql ',class))) direct-fields)
 	   (defmethod append-fields ((class (eql ',class)) extra)
 		 (setf fields (append extra fields)))
+	   (defmethod reset-fields ((class (eql ',class)))
+		 (setf fields direct-fields))
 	   (handle-fields ',class))
 
 	 (defmethod init-from-alist ((class (eql ',class)) alist)

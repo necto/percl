@@ -33,8 +33,11 @@
 				   ('sl-l "sl-l" :type list)))
 (generate-methods test-cl-der ('cont tst-db) ( ('sl3 "sl3")))
 
-(generate-db-methods test-cl 'table tst-mem-db) ; TODO: make full redefenition possible
-(generate-db-methods test-cl-der 'table tst-mem-db)
+(generate-methods test-cl ('table tst-mem-db)
+				  (('sl1 "sl1" :set (('ans "42") ('res 45)))
+				   ('sl2 "sl2") ;Redefenition test
+				   ('sl-l "sl-l" :type list)))
+(generate-methods test-cl-der ('table tst-mem-db) ( ('sl3 "sl3")))
 
 (addtest (percl-test) id-present
   (ensure-same (get-fields 'identifable)

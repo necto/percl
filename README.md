@@ -12,7 +12,7 @@
     (defclass Myth (identifable)
       ((story :initarg :story :accessor my-story)
        (name :initarg :name :accessor my-name)))
-    (defclass DB (database-base) (myths))
+    (defclass DB (mongo-db) (myths))
 
     
     (defmethod initialize-instance ((db DB) &key)
@@ -47,7 +47,7 @@
  
 ; After it you may want to work with this object, and save results of your work:
     
-    (let ((i (load-inst 'Myth id *db*)))
+    (let ((i (load-inst 'Myth *db* :id id)))
       (print (my-name i))                  ;-> "Uranus"
       (setf (my-story i) "Uranus have the long byography...")
       (store-inst i *db*))
