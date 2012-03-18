@@ -120,6 +120,8 @@
 	 (let* ((direct-fields ',(specs>prop-list specs))
 			(fields direct-fields))
 	   (defmethod get-fields ((class (eql ',class)))  fields)
+	   (defmethod get-field-name ((class (eql ',class)) (slot symbol))
+		 (getf fields (intern (symbol-name slot) "KEYWORD")))
 	   (defmethod direct-fields ((class (eql ',class))) direct-fields)
 	   (defmethod append-fields ((class (eql ',class)) extra)
 		 (setf fields (append extra fields)))

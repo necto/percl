@@ -2,9 +2,13 @@
 (in-package :percl)
 
 (defgeneric get-uniq-number (db))
-(defgeneric retreive-one (id db coll))
-(defgeneric retreive-all (db coll))
+(defgeneric retreive-one (db coll id query)
+	(:documentation "Must be supplyed only one: either id or query, not both."))
+(defgeneric retreive-all (db coll query)
+	(:documentation "null query means retreive each entry"))
 (defgeneric write-value (doc db coll new))
+(defgeneric adopt-query (query db class)
+	(:documentation "transform query to the format understood by database"))
 
 (defun make-inst-from-doc (doc class)
   `(let ((inst (make-instance ',class)))
@@ -16,13 +20,17 @@
 	 (inst>doc ,inst doc)
 	 doc))
 
+(defun handle-query (q db cl)
+  `(if ,q 
+	 (adopt-query ,q ,db ',cl)))
+
 (defmacro generate-db-methods (class coll db)
   `(progn
-	 (defmethod load-inst ((class (eql ',class)) id (db ,db))
-	   (let ((doc (retreive-one id db ,coll)))
+	 (defmethod load-inst ((class (eql ',class)) (db ,db) &key id query)
+	   (let ((doc (retreive-one db ,coll id ,(handle-query 'query 'db class))))
 		 (when doc ,(make-inst-from-doc 'doc class))))
-	 (defmethod load-all-instances ((class (eql ',class)) (db ,db))
-	   (iter (for doc in (retreive-all db ,coll))
+	 (defmethod load-all-instances ((class (eql ',class)) (db ,db) &key query)
+	   (iter (for doc in (retreive-all db ,coll ,(handle-query 'query 'db class)))
 			 (collect ,(make-inst-from-doc 'doc class))))
 
 	 (defmethod store-inst ((inst ,class) (db ,db))

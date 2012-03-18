@@ -2,10 +2,10 @@
 (asdf:operate 'asdf:load-op :percl)
 (asdf:operate 'asdf:load-op :lift)
 
-(defpackage pkg
+(defpackage percl-test
   (:use :cl :cl-user))
 
-(in-package pkg)
+(in-package :percl-test)
 
 (use-package :percl)
 (use-package :lift)
@@ -24,11 +24,17 @@
 (defclass tst-db (mongo-db)
   (cont))
 
+(defclass tst-mem-db (mem-db)
+  (table))
+
 (generate-methods test-cl ('cont tst-db)
 				  (('sl1 "sl1" :set (('ans "42") ('res 45)))
 				   ('sl2 "sl2")
 				   ('sl-l "sl-l" :type list)))
 (generate-methods test-cl-der ('cont tst-db) ( ('sl3 "sl3")))
+
+(generate-db-methods test-cl 'table tst-mem-db) ; TODO: make full redefenition possible
+(generate-db-methods test-cl-der 'table tst-mem-db)
 
 (addtest (percl-test) id-present
   (ensure-same (get-fields 'identifable)
@@ -66,12 +72,15 @@
 	'(3 4 2 "o-lala")))
 
 
+(defmethod initialize-instance ((db tst-mem-db) &key)
+  (setf (slot-value db 'table) (make-hash-table :test 'equalp)))
+
 (defmethod initialize-instance ((db tst-db) &key)
   (setf (slot-value db 'db) (make-instance 'mongo:database :name "test"))
   (setf (slot-value db 'cont) (mongo:collection (slot-value db 'db) "tt")))
 
 (deftestsuite percl-db-test (percl-test)
-  ((*db* (make-instance 'tst-db))
+  ((*db* (make-instance 'tst-db));'tst-mem-db));'tst-db))
    (id)) )
 
 (addtest (percl-db-test) db-store
@@ -81,18 +90,23 @@
 	(ensure-different id 0)))
 
 (addtest (percl-db-test) db-load
-  (let ((inst (load-inst 'test-cl id *db*)))
+  (let ((inst (load-inst 'test-cl *db* :id id)))
 	(ensure-same (id inst) id)
 	(ensure-same (slot-value inst 'sl1) 3)
 	(ensure-same (slot-value inst 'sl2) "str")
 	(ensure-same (slot-value inst 'sl-l) '(5 3 1))))
 
+(addtest (percl-db-test) query-one
+  (let ((inst (load-inst 'test-cl *db* :query '(sl1 3))))
+	(ensure inst)
+	(ensure-same (slot-value inst 'sl1) 3)))
+
 (addtest (percl-db-test) db-change-inst
-  (let ((inst (load-inst 'test-cl id *db*)))
+  (let ((inst (load-inst 'test-cl *db* :id id)))
 	(setf (slot-value inst 'sl1) 8)
 	(store-inst inst *db*)
 	(ensure-same id (id inst))
-	(ensure-same (slot-value (load-inst 'test-cl id *db*) 'sl1) 8)))
+	(ensure-same (slot-value (load-inst 'test-cl *db* :id id) 'sl1) 8)))
 
 (addtest (percl-db-test) db-load-all
   (let ((all (load-all-instances 'test-cl *db*)))

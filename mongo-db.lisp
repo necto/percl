@@ -11,6 +11,9 @@
 (defmethod initialize-instance :after ((db mongo-db) &key)
   (setf (slot-value db 'counters) (mongo:collection (slot-value db 'db) "counters")))
 
+(defmethod adopt-query (query (db mongo-db) class)
+  (son (get-field-name class (first query)) (second query)))
+
 (defmethod get-uniq-number ((db mongo-db))
   (let ((counter (mongo:find-one (slot-value db 'counters)
 								 (son "name" "uniq"))))
@@ -20,11 +23,13 @@
 					   (son "name" "uniq") counter)
 	  (floor val))))
 
-(defmethod retreive-one (id (db mongo-db) (coll symbol))
-  (mongo:find-one (slot-value db coll) (son "id" id)))
+(defmethod retreive-one ((db mongo-db) (coll symbol) id query)
+  (mongo:find-one (slot-value db coll) (if id 
+										 (son "id" id)
+										 query)))
 
-(defmethod retreive-all ((db mongo-db) (coll symbol))
-  (mongo:find-list (slot-value db coll) :query (son)))
+(defmethod retreive-all ((db mongo-db) (coll symbol) query)
+  (mongo:find-list (slot-value db coll) :query (if query query (son))))
 
 (defmethod write-value ((doc hash-table) (db mongo-db) (coll symbol) new)
   (if new

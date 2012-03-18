@@ -15,9 +15,9 @@
 
 (in-package :percl)
 			  
-(defgeneric load-inst (class id storage)
+(defgeneric load-inst (class storage &key id query)
   (:documentation "Pull an instance of class gy id from storage"))
-(defgeneric load-all-instances (class storage)
+(defgeneric load-all-instances (class storage &key query)
   (:documentation "Load whole collection of given class instances from
 				  the storage"))
 (defgeneric store-inst (inst storage)
@@ -28,4 +28,9 @@
 (defgeneric init-from-alist (class alist)
   (:documentation "Create instance according to given association list, such
 				  as the one, returned by hunchentoot:get-parameters*" ))
+
+(defgeneric get-field-name (class field)
+  (:documentation "Get the name (string) of the field, used for work with
+				  it in database"))
+
 
