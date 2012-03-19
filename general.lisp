@@ -16,11 +16,14 @@
   (:documentation "Initialize instance inst from associative list alist"))
 
 (defun parse-list (str)
+  "convert a string in format \" ( a e 33  5) \" to a list (a e 33 5)"
   (when (and str (not (string= "" str)))
 	(with-input-from-string (is str)
 	  (read is))))
 
 (defun ensure-type (val type)
+  "Make necessary transformations of val in order
+   to convert it to given type"
   (if (not type)
 	val
 	(let ((val-name (gensym)))
@@ -49,6 +52,8 @@
   (mapcar #'(lambda (unit) (apply fun unit)) list))
 
 (defun handle-set (getter set &key (bk nil))
+  "Convert the value (obtained by getter) to a one of elements of the set
+   like C-enums"
   (let ((val-name (gensym)))
 	(flet ((option (select subst)
 			 (if bk 
@@ -62,6 +67,7 @@
 		getter))))
 
 (defun pump-to-inst (doc getter inst specs)
+  "Fill slots of the inst by the appropriate entries of the doc"
   (flet ((expand (slot name &key set type &allow-other-keys)
 			(let ((val (ensure-type (funcall getter doc name) type)))
 			  `(setf (slot-value ,inst ,slot)
@@ -69,6 +75,7 @@
 	(mapargs #'expand specs)))
 
 (defun pump-from-inst (inst getter doc specs)
+  "Get slot values from inst, and write them to doc"
   (flet ((expand (slot name &key set &allow-other-keys)
 		    (let ((val `(slot-value ,inst ,slot)))
 			  `(setf ,(funcall getter doc name)
@@ -82,6 +89,7 @@
 						  tail))))
 
 (defun specs>prop-list (specs)
+  "Convert list-of lists to a property list with keys from KEYWORD package"
   (flatten 
 	(mapargs 
 	  #'(lambda (slot name &key &allow-other-keys)
@@ -107,6 +115,7 @@
 			  (pump-fields cl (car subset)))))
 
 (defun reestablish-inheritance (got-classes)
+  "Refresh all inherited fields"
   (reset-inheritance got-classes)
   (establish-inheritance got-classes))
 

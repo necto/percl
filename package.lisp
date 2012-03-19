@@ -31,6 +31,6 @@
 
 (defgeneric get-field-name (class field)
   (:documentation "Get the name (string) of the field, used for work with
-				  it in database"))
+				  it in databases"))
 
 

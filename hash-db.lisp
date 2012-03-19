@@ -1,12 +1,16 @@
 
 (in-package :percl)
 
-(defgeneric get-uniq-number (db))
+(defgeneric get-uniq-number (db)
+	(:documentation "Generate certanly uniq number, for identifiers"))
 (defgeneric retreive-one (db coll id query)
 	(:documentation "Must be supplyed only one: either id or query, not both."))
 (defgeneric retreive-all (db coll query)
 	(:documentation "null query means retreive each entry"))
-(defgeneric write-value (doc db coll new))
+(defgeneric write-value (doc db coll new)
+	(:documentation "store given value (hash-table) to the given collection
+					 in the database db. If the value created in application
+					 the new will be t"))
 (defgeneric adopt-query (query db class)
 	(:documentation "transform query to the format understood by database"))
 
