@@ -1,13 +1,14 @@
  A simple persistence manager for common lisp. Currently it supports only mongo.db via mongo-db-driver.
 
  The following features are now supported:
-  * Multiple databases
-  * Memory database, does not need any additional server
-  * Inheritance of registred classes (via type-of predicate)
-  * Redefinition of classes, with update all inheritance information
-  * Reduction values to cpecified types.
-  * Sets for values (analogue of C enums) - automatic cast.
-  * Abstract interface to database driver for easy addition new ones (currently tested only on MongoDB and mem-db:)
+ 
+ * Multiple databases
+ * Memory database, does not need any additional server
+ * Inheritance of registred classes (via type-of predicate)
+ * Redefinition of classes, with update all inheritance information
+ * Reduction values to cpecified types.
+ * Sets for values (analogue of C enums) - automatic cast.
+ * Abstract interface to database driver for easy addition new ones (currently tested only on MongoDB and mem-db:)
 
  For usage you just need (look at percl-test.lisp for advanced example):
 
