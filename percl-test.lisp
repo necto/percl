@@ -83,37 +83,41 @@
   (setf (slot-value db 'cont) (mongo:collection (slot-value db 'db) "tt")))
 
 (deftestsuite percl-db-test (percl-test)
-  ((*db* (make-instance 'tst-db));'tst-mem-db));'tst-db))
+  ((*mongo-db* (make-instance 'tst-db));'tst-mem-db));'tst-db))
    (id)) )
 
 (addtest (percl-db-test) db-store
   (let ((inst (make-instance 'test-cl :sl1 3 :sl2 "str" :sl-l '(5 3 1))))
-	(store-inst inst *db*)
+	(store-inst inst *mongo-db*)
 	(setf id (id inst))
 	(ensure-different id 0)))
 
 (addtest (percl-db-test) db-load
-  (let ((inst (load-inst 'test-cl *db* :id id)))
+  (let ((inst (load-inst 'test-cl *mongo-db* :id id)))
 	(ensure-same (id inst) id)
 	(ensure-same (slot-value inst 'sl1) 3)
 	(ensure-same (slot-value inst 'sl2) "str")
 	(ensure-same (slot-value inst 'sl-l) '(5 3 1))))
 
 (addtest (percl-db-test) query-one
-  (let ((inst (load-inst 'test-cl *db* :query '(sl1 3))))
+  (let ((inst (load-inst 'test-cl *mongo-db* :query '(sl1 3))))
 	(ensure inst)
 	(ensure-same (slot-value inst 'sl1) 3)))
 
 (addtest (percl-db-test) db-change-inst
-  (let ((inst (load-inst 'test-cl *db* :id id)))
+  (let ((inst (load-inst 'test-cl *mongo-db* :id id)))
 	(setf (slot-value inst 'sl1) 8)
-	(store-inst inst *db*)
+	(store-inst inst *mongo-db*)
 	(ensure-same id (id inst))
-	(ensure-same (slot-value (load-inst 'test-cl *db* :id id) 'sl1) 8)))
+	(ensure-same (slot-value (load-inst 'test-cl *mongo-db* :id id) 'sl1) 8)))
 
 (addtest (percl-db-test) db-load-all
-  (let ((all (load-all-instances 'test-cl *db*)))
+  (let ((all (load-all-instances 'test-cl *mongo-db*)))
 	(ensure-same (type-of all) 'cons)))
+
+(addtest (percl-db-test) db-remove-one
+  (remove-inst id 'test-cl *mongo-db*)
+  (ensure-null (load-inst 'test-cl *mongo-db* :id id)))
 
 (let* ((rez (run-tests :suite 'percl-test))
 	   (errs (lift:errors rez))

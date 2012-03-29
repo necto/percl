@@ -37,3 +37,6 @@
 	(mongo:update-op (slot-value db coll) (son "id" (gethash "id" doc))
 					 doc)))
 
+(defmethod remove-from-coll (id (coll symbol) (storage mongo-db))
+  (mongo:delete-op (slot-value storage coll) (son "id" id)))
+

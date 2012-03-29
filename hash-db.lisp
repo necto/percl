@@ -14,6 +14,8 @@
 (defgeneric adopt-query (query db class)
 	(:documentation "transform query to the format understood by database"))
 
+(defgeneric remove-from-coll (id coll db))
+
 (defun make-inst-from-doc (doc class)
   `(let ((inst (make-instance ',class)))
 	 (doc>inst inst ,doc)
@@ -36,6 +38,8 @@
 	 (defmethod load-all-instances ((class (eql ',class)) (db ,db) &key query)
 	   (iter (for doc in (retreive-all db ,coll ,(handle-query 'query 'db class)))
 			 (collect ,(make-inst-from-doc 'doc class))))
+	 (defmethod remove-inst (id (class (eql ',class)) (db ,db))
+	   (remove-from-coll id ,coll db))
 
 	 (defmethod store-inst ((inst ,class) (db ,db))
 	   (if (= 0 (id inst)) ;unaccounted instance

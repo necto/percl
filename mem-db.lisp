@@ -34,3 +34,6 @@
   (declare (ignore new))
   (setf (gethash (gethash "id" doc) (slot-value db coll)) doc))
 
+(defmethod remove-from-coll (id (coll symbol) (storage mem-db))
+  (remhash id (slot-value storage coll)))
+

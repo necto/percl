@@ -11,7 +11,8 @@
 			  :generate-db-methods
 			    :load-inst
 			    :load-all-instances
-			    :store-inst))
+			    :store-inst
+				:remove-inst))
 
 (in-package :percl)
 			  
@@ -23,6 +24,8 @@
 (defgeneric store-inst (inst storage)
   (:documentation "Save all changes of the given instance to the database, 
 				  or insert it, if new "))
+(defgeneric remove-inst (id class storage)
+  (:documentation "Remove an instance with given id from storage"))
 (defgeneric get-fields (class)
   (:documentation "Get the prop-list of all persistent fields of given class"))
 (defgeneric init-from-alist (class alist)
